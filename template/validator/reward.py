@@ -2,7 +2,7 @@ import numpy as np
 from typing import List, Optional
 import bittensor as bt
 from template.protocol import Dummy
-
+from template.validator.agent_runner import wrun_github_agent
 
 def reward(response: Optional[Dummy]) -> float:
     """
@@ -12,14 +12,20 @@ def reward(response: Optional[Dummy]) -> float:
     if response is None:
         bt.logging.info("Reward: response is None")
         return 0.0
+    agent = wrun_github_agent(response, "task.json", "output.json")
+    
+    with open("ground_truth.json", "r") as f:
+        ground_truth = f.read()
+    
+    with open("output.json", "r") as f:
+        task_data = f.read()
+    
 
-    github_url = response
-
-    if github_url and isinstance(github_url, str) and github_url.startswith("https://github.com"):
-        bt.logging.info(f"Reward: valid github_url received: {github_url}")
+    if agent and task_data in ground_truth:
+        bt.logging.info(f"Reward: valid agent received: {agent}")
         return 1.0
 
-    bt.logging.info(f"Reward: invalid or missing github_url: {github_url}")
+    bt.logging.info(f"Reward: Task data not found in agent: {agent}")
     return 0.0
 
 

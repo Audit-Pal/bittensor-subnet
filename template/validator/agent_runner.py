@@ -58,7 +58,7 @@ def wrun_github_agent(repo_url: str, task_file: str, output_file: str, agent_tim
             if not hasattr(agent, "run"):
                 raise AttributeError(f"Agent from {repo_url} does not have a 'run' method")
             
-            # Run the agent with the task data
+            
             bt.logging.info("Running agent with task data...")
             result = agent.run(task_data)
             

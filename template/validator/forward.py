@@ -24,13 +24,7 @@ async def forward(self):
     )
 
     bt.logging.info(f"Received responses: {responses}")
-    for response in responses:
-        if response is not None:
-            agent = wrun_github_agent(response, "task.json", "output.json")
-            if agent is not None:
-                bt.logging.info(f"Successfully loaded agent from {response}")
-            else:
-                bt.logging.warning(f"Failed to load agent from {response}")
+    
     # 2️⃣ Score responses
     rewards = get_rewards(self, responses=responses)
 
