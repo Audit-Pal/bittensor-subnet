@@ -47,6 +47,7 @@ class Miner(BaseMinerNeuron):
     ) -> template.protocol.Dummy:
 
         synapse.github_url = "https://github.com/plainbyte-dev/agent.git"
+        
         bt.logging.info(f"Returning github_url: {synapse.github_url}")
         return synapse
 

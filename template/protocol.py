@@ -40,7 +40,7 @@ import bittensor as bt
 #   assert dummy_output == 2
 
 
-class Dummy(bt.Synapse):
+class AgentSubmission(bt.Synapse):
     """
     A simple dummy protocol representation which uses bt.Synapse as its base.
     This protocol helps in handling dummy request and response communication between
@@ -50,9 +50,7 @@ class Dummy(bt.Synapse):
     - dummy_input: An integer value representing the input request sent by the validator.
     - dummy_output: An optional integer value which, when filled, represents the response from the miner.
     """
-    ping: str
-
-    # Output (miner → validator)
+    
     github_url: typing.Optional[str] = None
 
     def deserialize(self) -> int:
