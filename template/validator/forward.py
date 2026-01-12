@@ -26,9 +26,9 @@ async def forward(self):
     4. Proper error handling and cleanup
     """
     
-    # -------------------------------
-    # 1️⃣ Sample miners
-    # -------------------------------
+   
+    #  Sample miners
+
     miner_uids = get_random_uids(
         self, k=self.config.neuron.sample_size
     )
@@ -44,9 +44,7 @@ async def forward(self):
     axons = [self.metagraph.axons[uid] for uid in miner_uids]
     bt.logging.info(f"Sampled {len(miner_uids)} miners: {miner_uids}")
 
-    # -------------------------------
-    # 2️⃣ Fetch random challenge
-    # -------------------------------
+ 
     try:
         bt.logging.info("Fetching challenge from API...")
         resp = requests.get(CHALLENGE_API, timeout=10)
@@ -71,9 +69,6 @@ async def forward(self):
 
     bt.logging.info(f"Fetched challenge: {project_id}")
 
-    # -------------------------------
-    # 2.5️⃣ Fetch ground truth using project_id
-    # -------------------------------
     ground_truth = None
     ground_truth_url = f"{GROUND_TRUTH_API}/{project_id}"
     
@@ -96,9 +91,7 @@ async def forward(self):
         bt.logging.error("No ground truth available - cannot score")
         return []
 
-    # -------------------------------
-    # 3️⃣ Setup file paths with temp directory
-    # -------------------------------
+  
     temp_dir = Path(tempfile.mkdtemp(prefix=f"validator_{project_id}_"))
     
     try:
@@ -109,9 +102,7 @@ async def forward(self):
             json.dump(challenge, f, indent=2)
         bt.logging.info(f"Challenge written to {input_file}")
 
-        # -------------------------------
-        # 4️⃣ Query miners for GitHub URLs
-        # -------------------------------
+       
         bt.logging.info("Querying miners for GitHub URLs...")
         responses = await self.dendrite(
             axons=axons,
@@ -122,9 +113,7 @@ async def forward(self):
             timeout=12.0
         )
 
-        # -------------------------------
-        # 5️⃣ Run agents & score
-        # -------------------------------
+      
         rewards = [0.0] * len(miner_uids)
 
         for i, response in enumerate(responses):
@@ -198,17 +187,11 @@ async def forward(self):
                 rewards[i] = 0.0
                 continue
 
-        # -------------------------------
-        # 6️⃣ Update weights
-        # -------------------------------
         bt.logging.info(f"Updating scores for {len(miner_uids)} miners")
         bt.logging.info(f"Rewards: {rewards}")
         
         self.update_scores(rewards, miner_uids)
 
-        # -------------------------------
-        # 7️⃣ Cleanup and sleep
-        # -------------------------------
         try:
             shutil.rmtree(temp_dir)
             bt.logging.debug(f"Cleaned up temporary directory: {temp_dir}")
