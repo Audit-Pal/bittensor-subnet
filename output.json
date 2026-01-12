@@ -1,6 +1,11 @@
 {
-    "results": [
-        5,
-        20
-    ]
+  "project": "sherlock_20240913---final---perennial-v2-update-3-audit-report_2024_09",
+  "timestamp": "2026-01-12T14:23:26.151419",
+  "files_analyzed": 222,
+  "files_skipped": 0,
+  "total_findings": 0,
+  "findings": [],
+  "_agent_hash": "a8035a22f1e7919363f2e64490acbd29c3954a517f26937fb756c64d090d287d",
+  "_repo_url": "https://github.com/plainbyte-dev/agent.git",
+  "_validated_at": "2026-01-12T14:23:26.167175"
 }

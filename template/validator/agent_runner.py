@@ -4,24 +4,94 @@ import tempfile
 from pathlib import Path
 import json
 import bittensor as bt
+import multiprocessing as mp
+import hashlib
+import datetime
+import os
+import sys
 
 
-def wrun_github_agent(repo_url: str, task_file: str, output_file: str, agent_timeout: int = 60):
-    """
-    Clone a GitHub repo, load agent.py, execute tasks from task_file (JSON),
-    and write the results to output_file (JSON).
+# -------------------------------
+# Expected Output Schema
+# -------------------------------
 
-    Parameters:
-        repo_url (str): URL of the GitHub repo containing agent.py
-        task_file (str): Path to input JSON file with tasks
-        output_file (str): Path where output JSON will be written
-        agent_timeout (int): Max seconds to allow agent execution (default: 60)
+REQUIRED_FIELDS = {
+    "project": str,
+    "timestamp": str,
+    "files_analyzed": int,
+    "files_skipped": int,
+    "total_findings": int,
+    "findings": list,
+}
 
-    Returns:
-        dict: Output from agent.run(tasks), or None if execution failed
-    """
+REQUIRED_FINDING_FIELDS = {
+    "title": str,
+    "description": str,
+    "vulnerability_type": str,
+    "severity": str,
+    "confidence": (int, float),
+    "location": str,
+    "file": str,
+    "id": str,
+    "reported_by_model": str,
+    "status": str,
+}
+
+
+
+def _validate_agent_output(result: dict) -> bool:
+    if not isinstance(result, dict):
+        return False
+
+    for field, typ in REQUIRED_FIELDS.items():
+        if field not in result or not isinstance(result[field], typ):
+            return False
+
+    for finding in result["findings"]:
+        if not isinstance(finding, dict):
+            return False
+
+        for field, typ in REQUIRED_FINDING_FIELDS.items():
+            if field not in finding or not isinstance(finding[field], typ):
+                return False
+
+        confidence = float(finding["confidence"])
+        if confidence < 0.0 or confidence > 1.0:
+            return False
+
+    return True
+
+
+def _run_agent_process(agent_path: Path, tasks: dict, api_key, return_dict):
     try:
-        # Ensure task file exists
+        spec = importlib.util.spec_from_file_location("agent", agent_path)
+        agent = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(agent)
+
+        if not hasattr(agent, "main"):
+            raise AttributeError("agent.py must define main(tasks, api_key=None)")
+
+        result = agent.main(tasks, api_key)
+        return_dict["result"] = result
+
+    except Exception as e:
+        return_dict["error"] = str(e)
+
+
+
+def wrun_github_agent(
+    repo_url: str,
+    task_file: str,
+    output_file: str,
+    api_key: str | None = None,
+    agent_timeout: int = 60,
+):
+    """
+    Securely clone a miner repo, execute agent.py in isolation,
+    validate output, and write results to output_file.
+    """
+
+    try:
         task_path = Path(task_file)
         if not task_path.exists():
             raise FileNotFoundError(f"Task file not found: {task_file}")
@@ -29,44 +99,64 @@ def wrun_github_agent(repo_url: str, task_file: str, output_file: str, agent_tim
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
 
-            # Clone GitHub repo into temporary directory
+            # Clone repo (shallow clone)
             subprocess.run(
-                ["git", "clone", repo_url, str(temp_path)],
+                ["git", "clone", "--depth", "1", repo_url, str(temp_path)],
                 check=True,
                 timeout=30,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-            bt.logging.info(f"Cloned repo {repo_url} successfully.")
+            bt.logging.info(f"Cloned repo: {repo_url}")
 
-            # Check for agent.py
             agent_path = temp_path / "agent.py"
             if not agent_path.exists():
-                raise FileNotFoundError(f"agent.py not found in {repo_url}")
+                raise FileNotFoundError("agent.py not found in repository")
 
-            # Dynamically load agent.py
-            spec = importlib.util.spec_from_file_location("agent", agent_path)
-            agent = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(agent)
-            bt.logging.info("Agent loaded successfully.")
+            # Hash agent code for auditability
+            agent_hash = hashlib.sha256(agent_path.read_bytes()).hexdigest()
 
-            # Read tasks from JSON
+            # Load task JSON
             with open(task_file, "r") as f:
-                task_data = json.load(f)
-            
-            # Check if agent has run() function
-            if not hasattr(agent, "run"):
-                raise AttributeError(f"Agent from {repo_url} does not have a 'run' method")
-            
-            
-            bt.logging.info("Running agent with task data...")
-            result = agent.run(task_data)
-            
-            # Write output to JSON
-            with open(output_file, "w") as f:
-                json.dump(result, f, indent=4)
+                tasks = json.load(f)
 
-            bt.logging.info(f"Output written to {output_file}")
+            manager = mp.Manager()
+            return_dict = manager.dict()
+
+            process = mp.Process(
+                target=_run_agent_process,
+                args=(agent_path, tasks, api_key, return_dict),
+            )
+
+            process.start()
+            process.join(timeout=agent_timeout)
+
+            if process.is_alive():
+                process.terminate()
+                process.join()
+                bt.logging.warning("Agent execution timed out")
+                return None
+
+            if "error" in return_dict:
+                bt.logging.warning(f"Agent execution error: {return_dict['error']}")
+                return None
+
+            result = return_dict.get("result")
+
+            if not _validate_agent_output(result):
+                bt.logging.warning("Agent output failed schema validation")
+                return None
+
+            # Attach audit metadata
+            result["_agent_hash"] = agent_hash
+            result["_repo_url"] = repo_url
+            result["_validated_at"] = datetime.datetime.utcnow().isoformat()
+
+            # Write output
+            with open(output_file, "w") as f:
+                json.dump(result, f, indent=2)
+
+            bt.logging.info(f"Agent output written to {output_file}")
             return result
 
     except Exception as e:
