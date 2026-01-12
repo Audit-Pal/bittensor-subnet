@@ -95,7 +95,7 @@ async def forward(self):
     temp_dir = Path(tempfile.mkdtemp(prefix=f"validator_{project_id}_"))
     
     try:
-        input_file = temp_dir / "task.json"
+        input_file = "task.json"
         
         # Write challenge to task file
         with open(input_file, "w") as f:

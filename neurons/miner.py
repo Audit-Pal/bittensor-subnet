@@ -51,6 +51,8 @@ class Miner(BaseMinerNeuron):
         bt.logging.info(f"Returning github_url: {synapse.github_url}")
         return synapse
 
+
+
     async def blacklist(
         self, synapse: template.protocol.AgentSubmission
     ) -> typing.Tuple[bool, str]:
