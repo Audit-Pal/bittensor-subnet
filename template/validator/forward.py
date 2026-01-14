@@ -78,7 +78,7 @@ async def forward(self):
         gt_resp.raise_for_status()
         ground_truth = gt_resp.json()
         gt_findings = ground_truth.get("findings", [])
-        bt.logging.info(f"Ground truth fetched successfully: {len(gt_findings)} findings")
+        bt.logging.info(f"Ground truth fetched successfully: {gt_findings} findings")
     except requests.RequestException as e:
         bt.logging.warning(f"Failed to fetch ground truth: {e}")
         ground_truth = None
