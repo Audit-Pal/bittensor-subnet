@@ -55,4 +55,4 @@ Achieve the milestone of securing over 500 active protocols, effectively becomin
 
 Join the decentralized security revolution. Whether you are a miner submitting agents or a developer seeking verification, start here:
 
-👉 **[View Setup & Integration Guide](setup.md)**
+👉 **[View Setup & Integration Guide](SETUP.md)**
