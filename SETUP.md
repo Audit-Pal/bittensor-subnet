@@ -179,7 +179,7 @@ Validators generate test outputs, score miner responses, and set weights.
 **For Testnet:**
 
 ```bash
-python -m neurons.validator --netuid 395 \
+python -m neurons.validator --netuid 310 \
     --subtensor.network test \
     --wallet.name <your_validator_wallet> \
     --axon.port <port> \
@@ -191,7 +191,7 @@ python -m neurons.validator --netuid 395 \
 **For Mainnet:**
 
 ```bash
-python -m neurons.validator --netuid <netuid> \
+python -m neurons.validator --netuid 310 \
     --subtensor.network main \
     --wallet.name <your_validator_wallet> \
     --axon.port <port> \
